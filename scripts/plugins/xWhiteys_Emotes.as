@@ -620,6 +620,12 @@ void Emotes_DoEmoteConCmd(CBasePlayer@ _Player, const CCommand@ _Args) {
             endFrame = _Args.ArgC() >= 6 ? atof(_Args[5]) : endFrame;
             
             array<CEmotePart> parts = CEmotePartGenerator(seq, startFrame, endFrame, framerate).Generate();
+            if (parts.length() == 0) {
+                g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, "Cannot continue playing emote: 'parts.length()' is 0.\n");
+                
+                return;
+            }
+
             DoEmote(_Player, CEmote(parts, true), 0, true, false, false, false, false, false);
             
             bool noVerbose = false;
