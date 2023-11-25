@@ -942,7 +942,7 @@ CClientCommand _emote("e", "Emote commands", @CMD_Emote);
 void CMD_Emote(const CCommand@ args) {
     //string mapname = g_Engine.mapname;
     
-    //CBasePlayer@ player = g_ConCommandSystem.GetCurrentPlayer();
+    CBasePlayer@ player = g_ConCommandSystem.GetCurrentPlayer();
 
     //Implement that also :)
     /*if (mapname.Find("zm") == 0 or mapname.Find("hns") == 0 or mapname == "ctf_warforts") {
