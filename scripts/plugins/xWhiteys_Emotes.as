@@ -1,8 +1,14 @@
 array<CScheduledFunction@> g_dict_lpfnLoops(33);
 
 void PluginInit() {
-    g_Module.ScriptInfo.SetAuthor("xWhitey feat. wootguy");
+    g_Module.ScriptInfo.SetAuthor("wootguy feat. xWhitey");
     g_Module.ScriptInfo.SetContactInfo("@tyabus at Discord");
+    
+    Emotes_LoadPredefinedNamedEmotes();
+}
+
+float fabsf(float _Value) {
+    return _Value < 0.f ? _Value * -1.f : _Value;
 }
 
 enum EEmoteMode {
@@ -14,24 +20,23 @@ enum EEmoteMode {
 
 class CEmotePart {
     int m_iSequence;
-    int m_eEmoteMode;
+    EEmoteMode m_eEmoteMode;
     float m_flFramerate;
     float m_flStartFrame;
     float m_flEndFrame;
-    float m_flCurFrame;
     
-    bool m_bIgnoreMovements_Chain;
+    bool m_bIgnoreMovements;
     
     CEmotePart() {}
     
-    CEmotePart(int _Sequence, int _Mode, float _Framerate, float _StartFrame, float _EndFrame, bool _IgnoreMovements_Chain = false) {
+    CEmotePart(int _Sequence, EEmoteMode _Mode, float _Framerate, float _StartFrame, float _EndFrame, bool _IgnoreMovements = false) {
         m_iSequence = _Sequence;
         m_eEmoteMode = _Mode;
         m_flFramerate = _Framerate;
         m_flStartFrame = _StartFrame;
         m_flEndFrame = _EndFrame;
-        m_flCurFrame = 1.0f;
-        m_bIgnoreMovements_Chain = _IgnoreMovements_Chain;
+        
+        m_bIgnoreMovements = _IgnoreMovements;
         
         if (m_flFramerate == 0) {
             m_flFramerate = 0.0000001f;
@@ -39,28 +44,120 @@ class CEmotePart {
         if (m_flStartFrame <= 0) {
             m_flStartFrame = 0.00001f;
         }
+        if (m_flStartFrame >= 255) {
+            m_flStartFrame = 254.9999f;
+        }
+        if (m_flEndFrame <= 0) {
+            m_flEndFrame = 0.00001f;
+        }
         if (m_flEndFrame >= 255) {
             m_flEndFrame = 254.9999f;
         }
     }
 }
 
+enum EEmoteType {
+    kTypeDefault = 0,
+    kChainLoop,
+    kChainLoopingBackwards,
+    kChainLoopBackwardsOnce,
+    kChainLoopingSequenceBackwards
+}
+
 class CEmote {
-    array<CEmotePart> m_aParts;
-    bool m_bLoop;
-    bool m_bGaitOnly;
+    array<CEmotePart@> m_aParts;
+    EEmoteType m_eType;
+    bool m_bLoopingBack;
     
     CEmote() {}
     
-    CEmote(array<CEmotePart> _Parts, bool _bLoop, bool _bGaitOnly = false) {
-        this.m_aParts = _Parts;
-        this.m_bLoop = _bLoop;
-        m_bGaitOnly = _bGaitOnly;
+    CEmote(array<CEmotePart@> _Parts, EEmoteType _Type) {
+        m_aParts = _Parts;
+        m_eType = _Type;
+        m_bLoopingBack = false;
     }
 }
 
-string Emotes_UTIL_GetModeString(int mode) {
-    switch(mode) {
+dictionary g_dictEmotes;
+
+void Emotes_LoadPredefinedNamedEmotes() {
+    g_dictEmotes["alpha"] = CEmote({
+        CEmotePart(187, kModeFreeze, 1.45, 180, 236)
+    }, kTypeDefault);
+    g_dictEmotes["scan"] = CEmote({
+        CEmotePart(188, kModeOnce, 1.0, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["flex"] = CEmote({
+        CEmotePart(129, kModeFreeze, 0.2, 0, 52)
+    }, kTypeDefault);
+    g_dictEmotes["lewd"] = CEmote({
+        CEmotePart(88, kModeLoopGoBackwards, 1, 40, 70)
+    }, kTypeDefault);
+    g_dictEmotes["robot"] = CEmote({
+        CEmotePart(71, kModeFreeze, 1, 0, 100)
+    }, kTypeDefault);
+    g_dictEmotes["elbow"] = CEmote({
+        CEmotePart(35, kModeFreeze, 1, 135, 135)
+    }, kTypeDefault);
+    g_dictEmotes["hunch"] = CEmote({
+        CEmotePart(16, kModeFreeze, 1, 40, 98)
+    }, kTypeDefault);
+    g_dictEmotes["anal"] = CEmote({
+        CEmotePart(14, kModeFreeze, 1, 0, 120)
+    }, kTypeDefault);
+    g_dictEmotes["joy"] = CEmote({
+        CEmotePart(9, kModeFreeze, 1, 90, 90)
+    }, kTypeDefault);
+    g_dictEmotes["wave"] = CEmote({
+        CEmotePart(190, kModeOnce, 1.0, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["type"] = CEmote({
+        CEmotePart(186, kModeLoop, 1, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["type2"] = CEmote({
+        CEmotePart(187, kModeLoop, 1.2, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["study"] = CEmote({
+        CEmotePart(189, kModeOnce, 1, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["oof"] = CEmote({
+        CEmotePart(13, kModeOnce, 1, 0, 255),
+        CEmotePart(14, kModeOnce, -1, 255, 0)
+    }, kTypeDefault);
+    g_dictEmotes["dance"] = CEmote({
+        CEmotePart(31, kModeLoopGoBackwards, 1, 35, 255)
+    }, kTypeDefault);
+    g_dictEmotes["dance2"] = CEmote({
+        CEmotePart(71, kModeLoopGoBackwards, 1, 0, 220)
+    }, kTypeDefault);
+    g_dictEmotes["shake"] = CEmote({
+        CEmotePart(106, kModeFreeze, 1, 0, 0)
+    }, kTypeDefault);
+    g_dictEmotes["fidget"] = CEmote({
+        CEmotePart(50, kModeLoopGoBackwards, 1, 100, 245)
+    }, kTypeDefault);
+    g_dictEmotes["barnacle"] = CEmote({
+        CEmotePart(182, kModeOnce, 1, 0, 255),
+        CEmotePart(183, kModeOnce, 1, 0, 255),
+        CEmotePart(184, kModeOnce, 1, 0, 255),
+        CEmotePart(185, kModeLoop, 1, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["swim"] = CEmote({
+        CEmotePart(11, kModeLoop, 1, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["swim2"] = CEmote({
+        CEmotePart(10, kModeLoop, 1, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["run"] = CEmote({
+        CEmotePart(3, kModeLoop, 1, 0, 255)
+    }, kTypeDefault);
+    g_dictEmotes["crazy"] = CEmote({
+        CEmotePart(183, kModeLoop, 4, 0, 255)
+    }, kTypeDefault);
+}
+
+string Emotes_UTIL_GetModeString(EEmoteMode _Mode) {
+    switch (_Mode) {
         case kModeOnce: return "ONCE";
         case kModeFreeze: return "FREEZE";
         case kModeLoop: return "LOOP";
@@ -69,219 +166,224 @@ string Emotes_UTIL_GetModeString(int mode) {
     return "???";
 }
 
-class CTrickyBoolVarargs {
-    bool m_bIgnoreMovements;
-    bool m_bZeroSize;
-    bool m_bGaitSequencesIsTheSameAsSequence;
-    bool m_bNoVerbose;
-    
-    CTrickyBoolVarargs(bool _IgnoreMovements, bool _ZeroSize, bool _GaitSequenceIsTheSameAsSequence, bool _NoVerbose) {
-        m_bIgnoreMovements = _IgnoreMovements;
-        m_bZeroSize = _ZeroSize;
-        m_bGaitSequencesIsTheSameAsSequence = _GaitSequenceIsTheSameAsSequence;
-        m_bNoVerbose = _NoVerbose;
-    }
-}
-
 // force animation even when doing other things
-void Emotes_DoEmoteLoop(EHandle _Player, EHandle _Target, CEmote@ _Emote, int _PartIdx, float _LastFrame, CTrickyBoolVarargs@ _Varargs) {
+void Emotes_DoEmoteLoop(EHandle _Player, EHandle _lpTarget, CEmote@ _Emote, int _PartIdx, float _LastFrame, bool _IgnoreMovements, bool _NoVerbose) {
     if (!_Player.IsValid()) {
         return;
     }
     
-    CBasePlayer@ plr = cast<CBasePlayer@>(_Player.GetEntity());
-    if (plr is null or !plr.IsConnected()) {
+    CBasePlayer@ lpPlayer = cast<CBasePlayer@>(_Player.GetEntity());
+    if (lpPlayer is null or !lpPlayer.IsConnected()) {
         return;
     }
     
-    CBaseMonster@ target = cast<CBaseMonster@>(_Target.GetEntity());
-    if (target is null) {
+    CBaseMonster@ lpTarget = cast<CBaseMonster@>(_lpTarget.GetEntity());
+    if (lpTarget is null) {
         return;
     }
     
-    if (!plr.IsAlive()) {
+    if (!lpPlayer.IsAlive()) {
         return;
     }
     
-    bool _IgnoreMovements = _Varargs.m_bIgnoreMovements;
-    bool _ZeroSize = _Varargs.m_bZeroSize;
-    bool _GaitSequenceIsTheSameAsSequence = _Varargs.m_bGaitSequencesIsTheSameAsSequence;
-    bool _NoVerbose = _Varargs.m_bNoVerbose;
+    CEmotePart@ lpPart = _Emote.m_aParts[_PartIdx];
     
-    if (_ZeroSize) {
-        target.pev.size = g_vecZero;
-        target.pev.mins = g_vecZero;
-        target.pev.maxs = g_vecZero;
+    // Actually, implementation of "broken" ignoreMovements back from Sw1ft747's Half-Life A
+    bool bGaitBroken = (_IgnoreMovements || lpPart.m_bIgnoreMovements) && lpPart.m_iSequence >= 12 && lpPart.m_iSequence <= 18 /* death sequences */;
+    
+    if (bGaitBroken) {
+        lpTarget.pev.gaitsequence = lpPart.m_iSequence;
+    } else if (_IgnoreMovements || lpPart.m_bIgnoreMovements) {
+        lpTarget.pev.gaitsequence = 0;
     }
     
-    CEmotePart e = _Emote.m_aParts[_PartIdx];
+    bool bEmoteIsPlaying = lpTarget.pev.sequence == lpPart.m_iSequence;
     
-    // Hardcoded ignore movements impl
-    if ((_IgnoreMovements || e.m_bIgnoreMovements_Chain) && e.m_iSequence >= 12 && e.m_iSequence <= 18) {
-        if (!_GaitSequenceIsTheSameAsSequence && e.m_bIgnoreMovements_Chain) {
-            _GaitSequenceIsTheSameAsSequence = true;
-        }
-        if (_GaitSequenceIsTheSameAsSequence) {
-            target.pev.gaitsequence = e.m_iSequence;
-        } else {
-            target.pev.gaitsequence = 0;
-        }
-    } else if (_IgnoreMovements || e.m_bIgnoreMovements_Chain) {
-        target.pev.gaitsequence = 0;
-        _GaitSequenceIsTheSameAsSequence = false;
-    }
-    
-    bool bEmoteIsPlaying = target.pev.sequence == e.m_iSequence;
-        
     if (!bEmoteIsPlaying) {
-        if (e.m_eEmoteMode == kModeLoopGoBackwards) { // Didn't make an ignore movements fix for iloop mode, sadly =( -  t r a s h
-            if (_LastFrame >= e.m_flEndFrame - 0.1f) {
-                _LastFrame = e.m_flEndFrame;
-                e.m_flFramerate = -abs(e.m_flFramerate);
-            }  else if (_LastFrame <= e.m_flStartFrame + 0.1f) {
-                _LastFrame = e.m_flStartFrame;
-                e.m_flFramerate = abs(e.m_flFramerate);
+        if (lpPart.m_eEmoteMode == kModeLoopGoBackwards) { // Didn't make an ignore movements fix for iloop mode, sadly =( -  t r a s h
+            if (_LastFrame >= lpPart.m_flEndFrame - 0.1f) {
+                _LastFrame = lpPart.m_flEndFrame;
+                lpPart.m_flFramerate = -fabsf(lpPart.m_flFramerate);
+            } else if (_LastFrame <= lpPart.m_flStartFrame + 0.1f) {
+                _LastFrame = lpPart.m_flStartFrame;
+                lpPart.m_flFramerate = fabsf(lpPart.m_flFramerate);
             }
-        } else if (e.m_eEmoteMode == kModeLoop) {
-            if (!_IgnoreMovements && !e.m_bIgnoreMovements_Chain) { // Ignore movements fix when animation restarts after jumping
-                _LastFrame = e.m_flStartFrame;
+        } else if (lpPart.m_eEmoteMode == kModeLoop) {
+            if (!_IgnoreMovements) { // Ignore movements fix when animation restarts after jumping
+                _LastFrame = lpPart.m_flStartFrame;
             }
              
-            if (e.m_flFramerate >= 0 && _LastFrame <= e.m_flStartFrame) {
-                _LastFrame = e.m_flStartFrame;
+            if (lpPart.m_flFramerate >= 0 && _LastFrame <= lpPart.m_flStartFrame) {
+                _LastFrame = lpPart.m_flStartFrame;
             }
                 
-            if (e.m_flFramerate >= 0 && _LastFrame >= e.m_flEndFrame) {
-                _LastFrame = e.m_flStartFrame;
-            } else if (e.m_flFramerate < 0 && _LastFrame <= e.m_flEndFrame + 0.1f) {
-                _LastFrame = e.m_flStartFrame;
+            if (lpPart.m_flFramerate >= 0 && _LastFrame >= lpPart.m_flEndFrame) {
+                _LastFrame = lpPart.m_flStartFrame;
+            } else if (lpPart.m_flFramerate < 0 && _LastFrame <= lpPart.m_flEndFrame + 0.1f) {
+                _LastFrame = lpPart.m_flStartFrame;
             }
-        } else if (e.m_eEmoteMode == kModeOnce) {
-            if (!_IgnoreMovements && !e.m_bIgnoreMovements_Chain) {
-                if ((e.m_flFramerate >= 0 and _LastFrame > e.m_flEndFrame - 0.1f) or 
-                    (e.m_flFramerate < 0 and _LastFrame < e.m_flEndFrame + 0.1f) or
-                    (e.m_flFramerate >= 0 and target.pev.frame < _LastFrame) or 
-                    (e.m_flFramerate < 0 and target.pev.frame > _LastFrame)) {
-                        DoEmote(plr, _Emote, _PartIdx + 1, _NoVerbose, _IgnoreMovements || e.m_bIgnoreMovements_Chain, _ZeroSize, _GaitSequenceIsTheSameAsSequence);
+        } else if (lpPart.m_eEmoteMode == kModeOnce) {
+            if (!_IgnoreMovements) {
+                if ((lpPart.m_flFramerate >= 0 and _LastFrame > lpPart.m_flEndFrame - 0.1f) or 
+                    (lpPart.m_flFramerate < 0 and _LastFrame < lpPart.m_flEndFrame + 0.1f) or
+                    (lpPart.m_flFramerate >= 0 and lpTarget.pev.frame < _LastFrame) or 
+                    (lpPart.m_flFramerate < 0 and lpTarget.pev.frame > _LastFrame)) {
+                        DoEmote(lpPlayer, _Emote, _Emote.m_bLoopingBack ? _PartIdx - 1 : _PartIdx + 1, _IgnoreMovements, _NoVerbose);
                         return;
                 }
             } else { // Ignore movements fix when animation restarts after jumping
-                if ((e.m_flFramerate >= 0 and _LastFrame >= e.m_flEndFrame - 0.1f) or (e.m_flFramerate < 0 and _LastFrame <= e.m_flEndFrame + 0.1f)) {
-                    DoEmote(plr, _Emote, _PartIdx + 1, _NoVerbose, _IgnoreMovements || e.m_bIgnoreMovements_Chain, _ZeroSize, _GaitSequenceIsTheSameAsSequence);
+                if ((lpPart.m_flFramerate >= 0 and _LastFrame >= lpPart.m_flEndFrame - 0.1f) or (lpPart.m_flFramerate < 0 and _LastFrame <= lpPart.m_flEndFrame + 0.1f)) {
+                    DoEmote(lpPlayer, _Emote, _Emote.m_bLoopingBack ? _PartIdx - 1 : _PartIdx + 1, _IgnoreMovements, _NoVerbose);
                     return;
                 }
             }
-        } else if (e.m_eEmoteMode == kModeFreeze) { // I think freeze mode doesn't need an ignore movements fix 'cause it works properly without it :D
-            if ((e.m_flFramerate >= 0 and _LastFrame >= e.m_flEndFrame - 0.1f) or (e.m_flFramerate < 0 and _LastFrame <= e.m_flEndFrame + 0.1f)) {
-                _LastFrame = e.m_flEndFrame;
-                e.m_flFramerate = target.pev.framerate = 0.0000001f;
+        } else if (lpPart.m_eEmoteMode == kModeFreeze) { // I think freeze mode doesn't need an ignore movements fix 'cause it works properly without it :D
+            if ((lpPart.m_flFramerate >= 0 and _LastFrame >= lpPart.m_flEndFrame - 0.1f) or (lpPart.m_flFramerate < 0 and _LastFrame <= lpPart.m_flEndFrame + 0.1f)) {
+                _LastFrame = lpPart.m_flEndFrame;
+                lpPart.m_flFramerate = lpTarget.pev.framerate = 0.0000001f;
             }
         }
         
-        target.m_Activity = ACT_RELOAD;
-        if (_GaitSequenceIsTheSameAsSequence) target.m_GaitActivity = ACT_RELOAD;
-        target.m_IdealActivity = ACT_RELOAD;
-        target.m_movementActivity = ACT_RELOAD;
-        target.pev.sequence = e.m_iSequence;
-        target.pev.frame = _LastFrame;
-        target.ResetSequenceInfo();
-        if (_GaitSequenceIsTheSameAsSequence) target.ResetGaitSequenceInfo();
-        target.pev.framerate = e.m_flFramerate;
+        lpTarget.m_Activity = ACT_RELOAD;
+        if (bGaitBroken) lpTarget.m_GaitActivity = ACT_RELOAD;
+        lpTarget.m_IdealActivity = ACT_RELOAD;
+        lpTarget.m_movementActivity = ACT_RELOAD;
+        lpTarget.pev.sequence = lpPart.m_iSequence;
+        lpTarget.pev.frame = _LastFrame;
+        lpTarget.ResetSequenceInfo();
+        if (bGaitBroken) lpTarget.ResetGaitSequenceInfo();
+        lpTarget.pev.framerate = lpPart.m_flFramerate;
     } else {
         bool bLoopFinished = false;          
-        if (e.m_eEmoteMode == kModeLoopGoBackwards)
-            bLoopFinished = (target.pev.frame - e.m_flEndFrame > 0.01f) or (e.m_flStartFrame - target.pev.frame > 0.01f);
+        if (lpPart.m_eEmoteMode == kModeLoopGoBackwards)
+            bLoopFinished = (lpTarget.pev.frame - lpPart.m_flEndFrame) > 0.0000001f or (lpPart.m_flStartFrame - lpTarget.pev.frame) > 0.0000001f;
         else
-            bLoopFinished = e.m_flFramerate > 0 ? (target.pev.frame - e.m_flEndFrame > 0.01f) : (e.m_flEndFrame - target.pev.frame > 0.01f);
+            bLoopFinished = lpPart.m_flFramerate > 0 ? (lpTarget.pev.frame - lpPart.m_flEndFrame > 0.01f) : (lpPart.m_flEndFrame - lpTarget.pev.frame > 0.01f);
             
         if (bLoopFinished) {
-            if (e.m_eEmoteMode == kModeOnce) {
-                DoEmote(plr, _Emote, _PartIdx + 1, _NoVerbose, _IgnoreMovements || e.m_bIgnoreMovements_Chain, _ZeroSize, _GaitSequenceIsTheSameAsSequence);
+            if (lpPart.m_eEmoteMode == kModeOnce) {
+                DoEmote(lpPlayer, _Emote, _Emote.m_bLoopingBack ? _PartIdx - 1 : _PartIdx + 1, _IgnoreMovements, _NoVerbose);
                 return;
-            } else if (e.m_eEmoteMode == kModeFreeze) {
-                target.pev.frame = e.m_flEndFrame;
-                e.m_flFramerate = target.pev.framerate = 0.0000001f;
-            } else if (e.m_eEmoteMode == kModeLoop)  {
-                target.pev.frame = e.m_flStartFrame;
-            } else if (e.m_eEmoteMode == kModeLoopGoBackwards) {
-                _LastFrame = target.pev.frame;
-                if (_LastFrame >= e.m_flEndFrame - 0.1f) {
-                    _LastFrame = e.m_flEndFrame;
-                    e.m_flFramerate = -abs(e.m_flFramerate);
-                } else if (_LastFrame <= e.m_flStartFrame + 0.1f) {
-                    _LastFrame = e.m_flStartFrame;
-                    e.m_flFramerate = abs(e.m_flFramerate);
+            } else if (lpPart.m_eEmoteMode == kModeFreeze) {
+                lpTarget.pev.frame = lpPart.m_flEndFrame;
+                lpPart.m_flFramerate = lpTarget.pev.framerate = 0.0000001f;
+            } else if (lpPart.m_eEmoteMode == kModeLoop)  {
+                lpTarget.pev.frame = lpPart.m_flStartFrame;
+            } else if (lpPart.m_eEmoteMode == kModeLoopGoBackwards) {
+                _LastFrame = lpTarget.pev.frame;
+                
+                if (_LastFrame >= lpPart.m_flEndFrame - 0.1f) {
+                    _LastFrame = lpPart.m_flEndFrame;
+                    lpPart.m_flFramerate = -fabsf(lpPart.m_flFramerate);
+                } else if (_LastFrame <= lpPart.m_flStartFrame + 0.1f) {
+                    _LastFrame = lpPart.m_flStartFrame;
+                    lpPart.m_flFramerate = fabsf(lpPart.m_flFramerate);
                 }
 
-                target.pev.framerate = e.m_flFramerate;
+                lpTarget.pev.framerate = lpPart.m_flFramerate;
             }
         } else {
-            _LastFrame = target.pev.frame;
-                
-            target.m_flLastEventCheck = g_Engine.time + 1.0f;
-            target.m_flLastGaitEventCheck = g_Engine.time + 1.0f;
+            _LastFrame = lpTarget.pev.frame;
             
-            if (_LastFrame <= 0)
+            if (lpPart.m_eEmoteMode == kModeLoop) {
+                if (lpPart.m_flFramerate >= 0 && _LastFrame >= lpPart.m_flEndFrame) { //Make the animation reset whenever we end doing it mid-air (loop mode specific)
+                    _LastFrame = lpTarget.pev.frame = lpPart.m_flStartFrame;
+                } else if (lpPart.m_flFramerate < 0 && _LastFrame <= lpPart.m_flEndFrame + 0.1f) {
+                    _LastFrame = lpTarget.pev.frame = lpPart.m_flStartFrame;
+                }
+            }
+            
+            lpTarget.m_flLastEventCheck = g_Engine.time + 1.0f;
+            lpTarget.m_flLastGaitEventCheck = g_Engine.time + 1.0f;
+            
+            if (_LastFrame <= 0.f)
                 _LastFrame = 0.00001f;
-            if (_LastFrame >= 255)
+            if (_LastFrame >= 255.f)
                 _LastFrame = 254.9999f;
         }
     }
         
-    @g_dict_lpfnLoops[plr.entindex()] = g_Scheduler.SetTimeout("Emotes_DoEmoteLoop", 0, _Player, _Target, @_Emote, _PartIdx, _LastFrame, @_Varargs);
+    @g_dict_lpfnLoops[lpPlayer.entindex()] = g_Scheduler.SetTimeout("Emotes_DoEmoteLoop", 0, _Player, _lpTarget, @_Emote, _PartIdx, _LastFrame, _IgnoreMovements, _NoVerbose);
 }
 
-void DoEmote(CBasePlayer@ _Player, CEmote _Emote, int _PartIdx, bool _NoVerbose, bool _IgnoreMovements, bool _ZeroSize, bool _GaitSequenceIsTheSameAsSequence) {
-    CBaseMonster@ emoteEnt = cast<CBaseMonster@>(_Player);
-
-    if (_PartIdx >= int(_Emote.m_aParts.size())) {
-        if (_Emote.m_bLoop) {
+void DoEmote(CBasePlayer@ _Player, CEmote@ _Emote, int _PartIdx, bool _IgnoreMovements, bool _NoVerbose) {
+    CBaseMonster@ lpEmoteEnt = cast<CBaseMonster@>(_Player);
+    
+    if (_PartIdx < 0) {
+        if (_Emote.m_eType == kChainLoopingBackwards) {
             _PartIdx = 0;
+            _Emote.m_bLoopingBack = false;
+        } else if (_Emote.m_eType == kChainLoopingSequenceBackwards) {
+            _PartIdx = 0;
+            _Emote.m_bLoopingBack = false;
+            for (uint idx = 0; idx < _Emote.m_aParts.size(); idx++) {
+                CEmotePart@ part = _Emote.m_aParts[idx];
+                float flEndFrame = part.m_flEndFrame;
+                part.m_flEndFrame = part.m_flStartFrame;
+                part.m_flStartFrame = flEndFrame;
+                part.m_flFramerate = part.m_flFramerate * -1.f;
+            }
+        } else {
+            return;
+        }
+    }
+
+    int iPartsSize = int(_Emote.m_aParts.size());
+    if (_PartIdx >= iPartsSize) {
+        if (_Emote.m_eType == kChainLoop) {
+            _PartIdx = 0;
+        } else if (_Emote.m_eType == kChainLoopBackwardsOnce) {
+            _Emote.m_bLoopingBack = true;
+            _PartIdx = iPartsSize - 1;
+        } else if (_Emote.m_eType == kChainLoopingBackwards) {
+            _Emote.m_bLoopingBack = true;
+            _PartIdx = iPartsSize - 1;
+        } else if (_Emote.m_eType == kChainLoopingSequenceBackwards) {
+            _Emote.m_bLoopingBack = true;
+            _PartIdx = iPartsSize - 1;
+            for (uint idx = 0; idx < _Emote.m_aParts.size(); idx++) {
+                CEmotePart@ part = _Emote.m_aParts[idx];
+                float flEndFrame = part.m_flEndFrame;
+                part.m_flEndFrame = part.m_flStartFrame;
+                part.m_flStartFrame = flEndFrame;
+                part.m_flFramerate = part.m_flFramerate * -1.f;
+            }
         } else {
             return;
         }
     }
     
-    CEmotePart e = _Emote.m_aParts[_PartIdx];
+    CEmotePart@ lpPart = _Emote.m_aParts[_PartIdx];
     
     if (!_NoVerbose) {
-        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Part: ' + _PartIdx + ', Sequence: ' + e.m_iSequence + " (" + Emotes_UTIL_GetModeString(e.m_eEmoteMode) + ")" +
-            ", Speed " + e.m_flFramerate + ", Frames: " + int(e.m_flStartFrame + 0.5f) + "-" + int(e.m_flEndFrame + 0.5f) + "\n");
-    }
-        
-    if (_ZeroSize) {
-        emoteEnt.pev.size = g_vecZero;
-        emoteEnt.pev.mins = g_vecZero;
-        emoteEnt.pev.maxs = g_vecZero;
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Part: ' + _PartIdx + ', Sequence: ' + lpPart.m_iSequence + " (" + Emotes_UTIL_GetModeString(lpPart.m_eEmoteMode) + ")" +
+            ", Speed " + lpPart.m_flFramerate + ", Frames: " + int(lpPart.m_flStartFrame + 0.5f) + "-" + int(lpPart.m_flEndFrame + 0.5f) + "\n");
     }
     
-    if ((_IgnoreMovements || e.m_bIgnoreMovements_Chain) && e.m_iSequence >= 12 && e.m_iSequence <= 18) {
-        if (!_GaitSequenceIsTheSameAsSequence && e.m_bIgnoreMovements_Chain) {
-            _GaitSequenceIsTheSameAsSequence = true;
-        }
-        if (_GaitSequenceIsTheSameAsSequence) {
-            emoteEnt.pev.gaitsequence = e.m_iSequence;
-        }
-    } else if (_IgnoreMovements || e.m_bIgnoreMovements_Chain) {
-        emoteEnt.pev.gaitsequence = 0;
-        _GaitSequenceIsTheSameAsSequence = false;
+    // Actually, implementation of "broken" ignoreMovements back from Sw1ft747's Half-Life A
+    bool bGaitBroken = (_IgnoreMovements || lpPart.m_bIgnoreMovements) && lpPart.m_iSequence >= 12 && lpPart.m_iSequence <= 18 /* death sequences */;
+    
+    if (bGaitBroken) {
+        lpEmoteEnt.pev.gaitsequence = lpPart.m_iSequence;
+    } else if (_IgnoreMovements || lpPart.m_bIgnoreMovements) {
+        lpEmoteEnt.pev.gaitsequence = 0;
     }
     
-    emoteEnt.m_Activity = ACT_RELOAD;
-    if (_GaitSequenceIsTheSameAsSequence) emoteEnt.m_GaitActivity = ACT_RELOAD;
-    emoteEnt.m_IdealActivity = ACT_RELOAD;
-    emoteEnt.m_movementActivity = ACT_RELOAD;
-    emoteEnt.pev.frame = e.m_flStartFrame;
-    emoteEnt.pev.sequence = e.m_iSequence;
-    emoteEnt.ResetSequenceInfo();
-    if (_GaitSequenceIsTheSameAsSequence) emoteEnt.ResetGaitSequenceInfo();
-    emoteEnt.pev.framerate = e.m_flFramerate;
+    lpEmoteEnt.m_Activity = ACT_RELOAD;
+    if (bGaitBroken) lpEmoteEnt.m_GaitActivity = ACT_RELOAD;
+    lpEmoteEnt.m_IdealActivity = ACT_RELOAD;
+    lpEmoteEnt.m_movementActivity = ACT_RELOAD;
+    lpEmoteEnt.pev.frame = lpPart.m_flStartFrame;
+    lpEmoteEnt.pev.sequence = lpPart.m_iSequence;
+    lpEmoteEnt.ResetSequenceInfo();
+    if (bGaitBroken) lpEmoteEnt.ResetGaitSequenceInfo();
+    lpEmoteEnt.pev.framerate = lpPart.m_flFramerate;
         
-    CScheduledFunction@ func = g_dict_lpfnLoops[_Player.entindex()];
-    if (func !is null) { // stop previous emote
-        g_Scheduler.RemoveTimer(func);
+    CScheduledFunction@ lpSchedule = g_dict_lpfnLoops[_Player.entindex()];
+    if (lpSchedule !is null) { // stop previous emote
+        g_Scheduler.RemoveTimer(lpSchedule);
     }
-    @g_dict_lpfnLoops[_Player.entindex()] = g_Scheduler.SetTimeout("Emotes_DoEmoteLoop", 0, EHandle(_Player), EHandle(emoteEnt), _Emote, _PartIdx, e.m_flStartFrame, CTrickyBoolVarargs(_IgnoreMovements, _ZeroSize, _GaitSequenceIsTheSameAsSequence, _NoVerbose));
+    @g_dict_lpfnLoops[_Player.entindex()] = g_Scheduler.SetTimeout("Emotes_DoEmoteLoop", 0, EHandle(_Player), EHandle(lpEmoteEnt), _Emote, _PartIdx, lpPart.m_flStartFrame, _IgnoreMovements, _NoVerbose);
 }
 
 void Emotes_DoEmoteConCmd(CBasePlayer@ _Player, const CCommand@ _Args) {
@@ -289,20 +391,15 @@ void Emotes_DoEmoteConCmd(CBasePlayer@ _Player, const CCommand@ _Args) {
         string szEmote = _Args[1].ToLowercase();
         
         if (szEmote == "off" or szEmote == "stop") {
-            CScheduledFunction@ func = g_dict_lpfnLoops[_Player.entindex()];
-            if (func !is null and !func.HasBeenRemoved()) {
-                g_Scheduler.RemoveTimer(func);
+            CScheduledFunction@ lpSchedule = g_dict_lpfnLoops[_Player.entindex()];
+            if (lpSchedule !is null and !lpSchedule.HasBeenRemoved()) {
+                g_Scheduler.RemoveTimer(lpSchedule);
                 _Player.m_Activity = ACT_IDLE;
                 _Player.ResetSequenceInfo();
                 _Player.ResetGaitSequenceInfo();
-                CBaseMonster@ target = cast<CBaseMonster@>(_Player);
-                target.m_flLastEventCheck = g_Engine.time + 1.0f;
-                target.m_flLastGaitEventCheck = g_Engine.time + 1.0f;
-                
-                Vector vecSize = Vector(1.0f, 1.0f, 1.0f);
-                target.pev.size = vecSize;
-                target.pev.mins = vecSize;
-                target.pev.maxs = vecSize;
+                CBaseMonster@ lpTarget = cast<CBaseMonster@>(_Player);
+                lpTarget.m_flLastEventCheck = g_Engine.time + 1.0f;
+                lpTarget.m_flLastGaitEventCheck = g_Engine.time + 1.0f;
                 
                 g_PlayerFuncs.SayText(_Player, "Emote stopped\n");
             } else {
@@ -312,59 +409,23 @@ void Emotes_DoEmoteConCmd(CBasePlayer@ _Player, const CCommand@ _Args) {
             return;
         }
         
-        if (szEmote == "list") {
-            g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, "Emotes: anal | lewd | nigger | wave\n");
+        if (szEmote == "version") {
+            g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, "emotes plugin v2; xWhitey's, like Sw1ft\n");
                 
             return;
         }
         
-        if (szEmote == "anal") {
-            bool noVerbose = false;
-        
-            for (int idx = 2; idx < _Args.ArgC(); idx++) {
-                if (_Args[idx].ToLowercase() == "noverbose") {
-                    noVerbose = true;
-                    break;
-                }
-            }
-        
-            DoEmote(_Player, CEmote({CEmotePart(14, kModeFreeze, 0.0f, 120, 120)}, false), 0, noVerbose, true, false, false);
-            return;
-        } else if (szEmote == "lewd") {
-            bool noVerbose = false;
-        
-            for (int idx = 2; idx < _Args.ArgC(); idx++) {
-                if (_Args[idx].ToLowercase() == "noverbose") {
-                    noVerbose = true;
-                    break;
-                }
-            }
-        
-            DoEmote(_Player, CEmote({CEmotePart(88, kModeLoopGoBackwards, 1.0f, 40, 70)}, false), 0, noVerbose, false, false, false);
-            return;
-        } else if (szEmote == "nigger") {
-            bool noVerbose = false;
-        
-            for (int idx = 2; idx < _Args.ArgC(); idx++) {
-                if (_Args[idx].ToLowercase() == "noverbose") {
-                    noVerbose = true;
-                    break;
-                }
-            }
-        
-            DoEmote(_Player, CEmote({CEmotePart(17, kModeFreeze, 1.0f, 255, 255)}, false), 0, noVerbose, true, false, true);
-            return;
-        } else if (szEmote == "wave") {
-            bool noVerbose = false;
-        
-            for (int idx = 2; idx < _Args.ArgC(); idx++) {
-                if (_Args[idx].ToLowercase() == "noverbose") {
-                    noVerbose = true;
-                    break;
-                }
+        if (szEmote == "list") {
+            array<string>@ rgszEmoteNames = g_dictEmotes.getKeys();
+            rgszEmoteNames.sortAsc();
+            g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, "Emotes: ");
+            for (uint idx = 0; idx < rgszEmoteNames.length(); idx++) {
+                string szEmoteName = rgszEmoteNames[idx];
+                g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, idx == 0 ? szEmoteName : " | " + szEmoteName);
             }
             
-            DoEmote(_Player, CEmote({CEmotePart(190, kModeOnce, 1.0f, 0, 255)}, false), 0, noVerbose, false, false, false);
+            g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, "\n");
+                
             return;
         }
         
@@ -374,139 +435,184 @@ void Emotes_DoEmoteConCmd(CBasePlayer@ _Player, const CCommand@ _Args) {
                 return;
             }
        
-            float speedMod = atof(_Args[2]);
+            float flSpeedModifier = atof(_Args[2]);
             string loopMode = _Args[3].ToLowercase();
             
-            int lastSeqMode = kModeOnce;
+            EEmoteType eEmoteType = kTypeDefault;
+            if (loopMode == "ilooponce") {
+                eEmoteType = kChainLoopBackwardsOnce;
+            }
+            if (loopMode == "iloop") {
+                eEmoteType = kChainLoopingBackwards;
+            }
+            if (loopMode == "loop") {
+                eEmoteType = kChainLoop;
+            }
+            if (loopMode == "iloopseq") {
+                eEmoteType = kChainLoopingSequenceBackwards;
+            }
+            
+            EEmoteMode eLastSequenceMode = kModeOnce;
             if (loopMode == "loopend") {
-                lastSeqMode = kModeLoop;
+                eLastSequenceMode = kModeLoop;
             }
             if (loopMode == "iloopend") {
-                lastSeqMode = kModeLoopGoBackwards;
+                eLastSequenceMode = kModeLoopGoBackwards;
             }
             if (loopMode == "freezeend") {
-                lastSeqMode = kModeFreeze;
+                eLastSequenceMode = kModeFreeze;
             }
 
-            array<CEmotePart> parts;
+            array<CEmotePart@> parts;
+            
+            bool bNoVerbose = false;
             
             for (int i = 4; i < _Args.ArgC(); i++) {
-                array<string> seqOpts = _Args[i].Split("_");
-                if (seqOpts[0].ToLowercase() == "noverbose") continue;
+                if (_Args[i].ToLowercase() == "noverbose") {
+                    bNoVerbose = true;
+                    continue;
+                }
+            
+                array<string> rgszPartOpts = _Args[i].Split("_");
                 
-                int seq = atoi(seqOpts[0]);
-                float speed = (seqOpts.size() > 1 ? atof(seqOpts[1]) : 1) * speedMod;
+                int iSequence = atoi(rgszPartOpts[0]);
+                float flSpeed = (rgszPartOpts.size() > 1 ? atof(rgszPartOpts[1]) : 1) * flSpeedModifier;
                 
-                float startFrame = (speed >= 0 ? 0.0001f : 254.9999f);
-                float endFrame = (speed >= 0 ? 254.9999f : 0.0001f);
-                startFrame = seqOpts.size() > 2 ? atof(seqOpts[2]) : startFrame;
-                endFrame = seqOpts.size() > 3 ? atof(seqOpts[3]) : endFrame;
-                bool ignoreMovements = seqOpts.size() > 4 ? (atoi(seqOpts[4]) > 0) : false;
+                float flStartFrame = (flSpeed >= 0.f ? 0.0001f : 254.9999f);
+                float flEndFrame = (flSpeed >= 0.f ? 254.9999f : 0.0001f);
+                flStartFrame = rgszPartOpts.size() > 2 ? atof(rgszPartOpts[2]) : flStartFrame;
+                flEndFrame = rgszPartOpts.size() > 3 ? atof(rgszPartOpts[3]) : flEndFrame;
                 
-                if (seq > 255) {
-                    seq = 255;
+                bool bIgnoreMovements = rgszPartOpts.size() > 4 ? atoi(rgszPartOpts[4]) > 0 : false;
+                
+                if (iSequence > 255) {
+                    iSequence = 255;
                 }
                 
-                bool isLast = i == _Args.ArgC() - 1;
-                int mode = isLast ? lastSeqMode : kModeOnce;
+                bool bIsLast = i == _Args.ArgC() - 1;
+                EEmoteMode eMode = bIsLast ? eLastSequenceMode : kModeOnce;
                 
-                parts.insertLast(CEmotePart(seq, mode, speed, startFrame, endFrame, ignoreMovements));
+                parts.insertLast(CEmotePart(iSequence, eMode, flSpeed, flStartFrame, flEndFrame, bIgnoreMovements));
             }
 
-            bool noVerbose = false;
-        
-            for (int idx = 2; idx < _Args.ArgC(); idx++) {
-                if (_Args[idx].ToLowercase() == "noverbose") {
-                    noVerbose = true;
-                    break;
-                }
-            }
-
-            DoEmote(_Player, CEmote(parts, loopMode == "loop"), 0, noVerbose, false, false, false);
+            DoEmote(_Player, CEmote(parts, eEmoteType), 0, false, bNoVerbose);
             
             return;
         }
         
-        bool isNumeric = true;
+        bool bIsNumeric = true;
         for (uint i = 0; i < szEmote.Length(); i++) {
             if (!isdigit(szEmote[i])) {
-                isNumeric = false;
+                bIsNumeric = false;
                 break;
             }
         }
         
-        if (!isNumeric) {
-            g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'The passed sequence is not numeric, skipping...\n');
+        if (!bIsNumeric) {
+            if (g_dictEmotes.exists(szEmote)) {
+                CEmote@ lpEmote = cast<CEmote@>(g_dictEmotes[szEmote]);
+                    
+                float flSpeed = _Args.ArgC() >= 3 ? atof(_Args[2]) : 1.0f;
+                for (uint idx = 0; idx < lpEmote.m_aParts.size(); idx++) {
+                    lpEmote.m_aParts[idx].m_flFramerate *= flSpeed;
+                }
+                
+                bool bNoVerbose = false;
+                
+                for (int idx = 2; idx < _Args.ArgC(); idx++) {
+                    if (!bNoVerbose)
+                        bNoVerbose = _Args[idx].ToLowercase() == "noverbose";
+                    else
+                        break;
+                }
+                    
+                DoEmote(_Player, lpEmote, 0, false, bNoVerbose);
+            } else {
+                g_PlayerFuncs.SayText(_Player, "No emote found with name " + szEmote + "\n");
+            }
+            
             return;
         }
         
-        int seq = atoi(szEmote);
+        int iSequence = atoi(szEmote);
         
-        int mode = kModeOnce;
+        EEmoteMode eMode = kModeOnce;
         string szMode = _Args[2];
         if (szMode.ToLowercase() == "loop") {
-            mode = kModeLoop;
+            eMode = kModeLoop;
         } else if (szMode.ToLowercase() == "iloop") {
-            mode = kModeLoopGoBackwards;
+            eMode = kModeLoopGoBackwards;
         } else if (szMode.ToLowercase() == "freeze") {
-            mode = kModeFreeze;
+            eMode = kModeFreeze;
         }
         
-        bool ignoreMovements = _Args.ArgC() >= 7 ? (atoi(_Args[6]) > 0) : false;
-        bool zeroSize = _Args.ArgC() >= 8 ? (atoi(_Args[7]) > 0) : false;
-        bool gaitSequenceIsTheSameAsSequence = _Args.ArgC() >= 9 ? (atoi(_Args[8]) > 0) : (seq >= 12 && seq <= 18);
+        bool bIgnoreMovements = _Args.ArgC() >= 7 ? (atoi(_Args[6]) > 0) : false;
         
-        float framerate = _Args.ArgC() >= 4 ? atof(_Args[3]) : 1.0f;
-        float startFrame = (framerate >= 0 ? 0.0001f : 254.9999f);
-        float endFrame = (framerate >= 0 ? 254.9999f : 0.0001f);
-        if (seq > 255) {
-            seq = 255;
+        float flFramerate = _Args.ArgC() >= 4 ? atof(_Args[3]) : 1.0f;
+        float flStartFrame = (flFramerate >= 0 ? 0.0001f : 254.9999f);
+        float flEndFrame = (flFramerate >= 0 ? 254.9999f : 0.0001f);
+        if (iSequence > 255) {
+            iSequence = 255;
         }
             
-        startFrame = _Args.ArgC() >= 5 ? atof(_Args[4]) : startFrame;
-        endFrame = _Args.ArgC() >= 6 ? atof(_Args[5]) : endFrame;
+        flStartFrame = _Args.ArgC() >= 5 ? atof(_Args[4]) : flStartFrame;
+        flEndFrame = _Args.ArgC() >= 6 ? atof(_Args[5]) : flEndFrame;
         
-        bool noVerbose = false;
-        
+        bool bNoVerbose = false;
+                
         for (int idx = 2; idx < _Args.ArgC(); idx++) {
-            if (_Args[idx].ToLowercase() == "noverbose") {
-                noVerbose = true;
+            if (!bNoVerbose)
+                bNoVerbose = _Args[idx].ToLowercase() == "noverbose";
+            else
                 break;
-            }
         }
-
-        DoEmote(_Player, CEmote({CEmotePart(seq, mode, framerate, startFrame, endFrame)}, false), 0, noVerbose, ignoreMovements, zeroSize, gaitSequenceIsTheSameAsSequence);
+        
+        DoEmote(_Player, CEmote({CEmotePart(iSequence, eMode, flFramerate, flStartFrame, flEndFrame)}, kTypeDefault), 0, bIgnoreMovements, bNoVerbose);
     } else {
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '----------------------------------Emote Commands----------------------------------\n\n');
-        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e off/.e stop" to stop your emote.\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e off" to stop your emote.\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e list" to list all named emotes.\n');
-        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e chain <speed> <chain_mode> <sequence>_[speed]_[startFrame]_[endFrame]_[ignoreMovements] ..." for advanced combos.\n');
-        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e <sequence> [mode] [speed] [startFrame] [endFrame] [ignoreMovements]" to run a sequence.\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e <name> [speed]" to play a named emote.\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e <sequence> [mode] [speed] [start_frame] [end_frame] [ignore_movements]" for more control.\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Type ".e chain <speed> <chain_mode> <sequence>_[speed]_[start_frame]_[end_frame]_[ignore_movements] ..." for advanced combos.\n');
     
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '\n<> = required. [] = optional.\n');
-        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, 'Add "noVerbose" in any part of the command to disable verbose.\n\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '\nAdd "noverbose" in any part of the command to disable verbose.\n');
             
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '<sequence> = 0-255. Most models have about 190 sequences.\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '[mode] = once, freeze, loop, or iloop.\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '<chain_mode> = once, loop, iloop, ilooponce, iloopseq, freezeend, loopend, or iloopend.\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '[speed] = Any number, even negative. The default speed is 1.\n');
-        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '<chain_mode> = once, loop, freezeend, loopend, or iloopend.\n');
-        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '[startFrame/endFrame] = 0-255. This is like a percentage. Frame count in the model doesn\'t matter.\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '[start_frame/end_frame] = 0-255. This is like a percentage. Frame count in the model doesn\'t matter.\n');
             
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '\nExamples:\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e oof\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e oof 2\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e 15 iloop\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e 15 iloop 0.5\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e 15 iloop 0.5 0 50\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e 15 iloop 1 0 255 1\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e chain 2 loop 13 14 15\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e chain 1 once 13 14_-1\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e chain 1 iloopend 182 183 184 185\n');
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e chain 1 freezeend 15_0.1_0_50 16_-1_100_10\n');
+        g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '.e chain 1 iloop 15 17\n');
         
         g_PlayerFuncs.ClientPrint(_Player, HUD_PRINTCONSOLE, '\n----------------------------------------------------------------------------------\n');
     }
 }
 
-CClientCommand _emote("e", "Emote commands", @CMD_Emote);
+CClientCommand g_EmoteCommand("e", "Emote commands", @CMD_Emote);
 
-void CMD_Emote(const CCommand@ args) {
-    Emotes_DoEmoteConCmd(g_ConCommandSystem.GetCurrentPlayer(), args);
+void CMD_Emote(const CCommand@ _Args) {
+    string szMapname = g_Engine.mapname;
+    
+    CBasePlayer@ lpPlayer = g_ConCommandSystem.GetCurrentPlayer();
+    
+    if (szMapname.Find("qsg") == 0 || szMapname.Find("zm") == 0 || szMapname.Find("hns") == 0 || szMapname == "ctf_warforts" || szMapname == "frostline_v1r") {
+        g_PlayerFuncs.ClientPrint(lpPlayer, HUD_PRINTCONSOLE, "Unknown command: .e\n");
+        return;
+    }
+
+    Emotes_DoEmoteConCmd(lpPlayer, _Args);
 }
